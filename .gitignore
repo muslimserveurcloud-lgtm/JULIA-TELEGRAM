@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+
+node_modules/
+**/node_modules/
+
+*.log
+*.pid
+
+auth_info/
+session/
+
+.DS_Store

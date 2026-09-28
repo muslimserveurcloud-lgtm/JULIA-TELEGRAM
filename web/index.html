@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>JULIA — SYSTÈME MCAMARA</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void: #030711;
+    --panel: #061019cc;
+    --cyan: #29f1ff;
+    --blue: #3e7cff;
+    --amber: #ffa53e;
+    --dim: #5c7a8a;
+    --line: rgba(41,241,255,0.18);
+    --text: #d6f4ff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--void);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 42px 42px;
+    background-position: center;
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Rajdhani', sans-serif;
+    position: relative;
+  }
+
+  body::before {
+    /* vignette pour assombrir les bords de la grille */
+    content: '';
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 0%, var(--void) 78%);
+    pointer-events: none; z-index: 1;
+  }
+
+  /* ── Cadre HUD (coins) ───────────────────────────────── */
+  .frame-corner {
+    position: fixed; width: 34px; height: 34px; z-index: 5;
+    border: 2px solid var(--cyan); opacity: 0.6;
+  }
+  .fc-tl { top: 18px; left: 18px; border-right: none; border-bottom: none; }
+  .fc-tr { top: 18px; right: 18px; border-left: none; border-bottom: none; }
+  .fc-bl { bottom: 18px; left: 18px; border-right: none; border-top: none; }
+  .fc-br { bottom: 18px; right: 18px; border-left: none; border-top: none; }
+
+  .topbar {
+    position: fixed; top: 24px; left: 60px; right: 60px; z-index: 5;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; letter-spacing: 2px; color: var(--dim);
+    text-transform: uppercase;
+  }
+  .topbar .brand { color: var(--cyan); font-family: 'Orbitron', sans-serif; font-weight: 700; letter-spacing: 4px; }
+  .conn-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--dim); margin-right: 8px; }
+  .conn-dot.on { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+
+  /* ── Login ───────────────────────────────────────────── */
+  #login {
+    position: relative; z-index: 3;
+    height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 22px;
+  }
+  #login .title {
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    font-size: 40px; letter-spacing: 14px; color: var(--cyan);
+    text-shadow: 0 0 24px var(--cyan);
+  }
+  #login .sub {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    letter-spacing: 3px; color: var(--dim); text-transform: uppercase;
+  }
+  #login input {
+    background: var(--panel); border: 1px solid var(--line);
+    color: var(--cyan); padding: 12px 16px; border-radius: 2px;
+    outline: none; width: 280px; text-align: center;
+    letter-spacing: 3px; font-family: 'Share Tech Mono', monospace;
+  }
+  #login input:focus { border-color: var(--cyan); }
+  #login button {
+    background: transparent; border: 1px solid var(--cyan); color: var(--cyan);
+    padding: 10px 30px; cursor: pointer; letter-spacing: 3px;
+    font-family: 'Orbitron', sans-serif; font-size: 12px; transition: 0.2s;
+  }
+  #login button:hover { background: var(--cyan); color: var(--void); box-shadow: 0 0 20px var(--cyan); }
+
+  /* ── App ─────────────────────────────────────────────── */
+  #app {
+    display: none; position: relative; z-index: 3;
+    height: 100%; flex-direction: column; align-items: center;
+    justify-content: center; padding: 90px 0 30px;
+  }
+
+  .reactor { position: relative; width: 230px; height: 230px; flex-shrink: 0; }
+  .reactor svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .ring-a { animation: spin 10s linear infinite; }
+  .ring-b { animation: spin 7s linear infinite reverse; }
+  .ring-c { animation: spin 16s linear infinite; }
+  .satellite { animation: spin 5s linear infinite; transform-origin: 115px 115px; }
+
+  .core {
+    position: absolute; inset: 78px; border-radius: 50%;
+    background: radial-gradient(circle, var(--cyan) 0%, #06202b 75%);
+    box-shadow: 0 0 30px 4px #29f1ffaa, 0 0 70px 10px #29f1ff44, inset 0 0 20px #ffffff55;
+    animation: breathe 2.6s ease-in-out infinite;
+  }
+  .core.busy { animation: breatheFast 0.7s ease-in-out infinite; background: radial-gradient(circle, var(--amber) 0%, #2b1a06 75%); box-shadow: 0 0 30px 4px #ffa53eaa, 0 0 70px 10px #ffa53e44; }
+
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+  @keyframes breatheFast { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+
+  #hudStatus {
+    margin-top: 22px; font-family: 'Orbitron', sans-serif; font-size: 12px;
+    letter-spacing: 5px; color: var(--cyan); text-transform: uppercase;
+  }
+
+  /* ── Waveform ────────────────────────────────────────── */
+  .waveform { display: flex; align-items: center; gap: 3px; height: 26px; margin-top: 14px; }
+  .waveform span {
+    width: 3px; background: var(--cyan); opacity: 0.35; height: 6px;
+    border-radius: 2px; transition: height 0.15s ease;
+  }
+  .waveform.active span { animation: wave 0.9s ease-in-out infinite; opacity: 0.9; }
+  .waveform span:nth-child(1){animation-delay:0s} .waveform span:nth-child(2){animation-delay:.1s}
+  .waveform span:nth-child(3){animation-delay:.2s} .waveform span:nth-child(4){animation-delay:.3s}
+  .waveform span:nth-child(5){animation-delay:.15s} .waveform span:nth-child(6){animation-delay:.25s}
+  .waveform span:nth-child(7){animation-delay:.05s} .waveform span:nth-child(8){animation-delay:.35s}
+  @keyframes wave { 0%,100% { height: 6px; } 50% { height: 24px; } }
+
+  /* ── Log / chat ──────────────────────────────────────── */
+  #log {
+    width: 92%; max-width: 620px; height: 200px; overflow-y: auto;
+    margin-top: 26px; padding: 14px 18px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 2px;
+    font-family: 'Share Tech Mono', monospace; font-size: 13px; line-height: 1.8;
+  }
+  #log::-webkit-scrollbar { width: 4px; }
+  #log::-webkit-scrollbar-thumb { background: var(--line); }
+  #log .row { display: flex; gap: 10px; }
+  #log .tag { color: var(--dim); flex-shrink: 0; }
+  #log .me .tag { color: var(--blue); }
+  #log .julia .tag { color: var(--cyan); }
+  #log .me .msg { color: #ffffffcc; }
+  #log .julia .msg { color: var(--cyan); }
+
+  #inputRow {
+    display: flex; align-items: center; gap: 10px; width: 92%; max-width: 620px; margin-top: 14px;
+  }
+  #inputRow .prompt { color: var(--cyan); font-family: 'Share Tech Mono', monospace; }
+  #msgInput {
+    flex: 1; background: var(--panel); border: 1px solid var(--line); color: var(--text);
+    padding: 12px 14px; border-radius: 2px; outline: none;
+    font-family: 'Share Tech Mono', monospace; font-size: 13px;
+  }
+  #msgInput:focus { border-color: var(--cyan); }
+  #sendBtn {
+    background: transparent; border: 1px solid var(--cyan); color: var(--cyan);
+    padding: 0 22px; height: 42px; cursor: pointer; letter-spacing: 2px;
+    font-family: 'Orbitron', sans-serif; font-size: 11px; transition: 0.2s;
+  }
+  #sendBtn:hover { background: var(--cyan); color: var(--void); }
+
+  #micBtn {
+    background: transparent; border: 1px solid var(--dim); color: var(--dim);
+    width: 42px; height: 42px; border-radius: 2px; cursor: pointer; font-size: 16px;
+    transition: 0.2s;
+  }
+  #micBtn:hover { border-color: var(--cyan); color: var(--cyan); }
+  #micBtn.recording {
+    border-color: var(--amber); color: var(--amber);
+    background: #ffa53e22; animation: micPulse 1s ease-in-out infinite;
+  }
+  @keyframes micPulse { 0%,100% { box-shadow: 0 0 0 0 #ffa53e55; } 50% { box-shadow: 0 0 0 8px #ffa53e00; } }
+</style>
+</head>
+<body>
+
+  <div class="frame-corner fc-tl"></div>
+  <div class="frame-corner fc-tr"></div>
+  <div class="frame-corner fc-bl"></div>
+  <div class="frame-corner fc-br"></div>
+
+  <div class="topbar">
+    <div><span class="brand">JULIA</span> &nbsp;/// SYSTÈME MCAMARA</div>
+    <div id="clock">--:--:--</div>
+    <div><span class="conn-dot" id="connDot"></span><span id="connText">HORS LIGNE</span></div>
+  </div>
+
+  <div id="login">
+    <div class="title">J U L I A</div>
+    <div class="sub">// authentification requise</div>
+    <input id="tokenInput" type="password" placeholder="TOKEN D'ACCÈS" onkeydown="if(event.key==='Enter') connect()" />
+    <button onclick="connect()">ÉTABLIR LA CONNEXION</button>
+  </div>
+
+  <div id="app">
+    <div class="reactor">
+      <svg viewBox="0 0 230 230">
+        <circle class="ring-a" cx="115" cy="115" r="108" fill="none" stroke="#29f1ff55" stroke-width="1.5" stroke-dasharray="2 10" />
+        <circle class="ring-b" cx="115" cy="115" r="92" fill="none" stroke="#29f1ff88" stroke-width="1" stroke-dasharray="1 6" />
+        <circle class="ring-c" cx="115" cy="115" r="76" fill="none" stroke="#3e7cff66" stroke-width="1.5" stroke-dasharray="14 4" />
+        <g class="satellite">
+          <circle cx="115" cy="7" r="3.5" fill="#29f1ff" style="filter:drop-shadow(0 0 6px #29f1ff)" />
+        </g>
+      </svg>
+      <div class="core" id="core"></div>
+    </div>
+
+    <div id="hudStatus">EN VEILLE</div>
+    <div class="waveform" id="waveform">
+      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <div id="log"></div>
+    <div id="inputRow">
+      <span class="prompt">&gt;</span>
+      <input id="msgInput" type="text" placeholder="Parle à Julia..." onkeydown="if(event.key==='Enter') sendMessage()" />
+      <button id="micBtn" onclick="toggleMic()" title="Parler à Julia">🎙️</button>
+      <button id="sendBtn" onclick="sendMessage()">ENVOYER</button>
+    </div>
+  </div>
+
+<script>
+let TOKEN = '';
+
+function tick() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('fr-FR');
+}
+setInterval(tick, 1000); tick();
+
+function connect() {
+  TOKEN = document.getElementById('tokenInput').value.trim();
+  if (!TOKEN) return;
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('connDot').classList.add('on');
+  document.getElementById('connText').textContent = 'EN LIGNE';
+
+  const sequence = [
+    'INITIALISATION DES SYSTÈMES...',
+    'MODULE VOIX — EN LIGNE',
+    'MODULE RÉSEAU — EN LIGNE',
+    'MODULE CONTRÔLE PC — EN LIGNE',
+    'JULIA — SYSTÈME ACTIF',
+  ];
+  sequence.forEach((ligne, i) => {
+    setTimeout(() => addLog('julia', ligne), i * 350);
+  });
+  setTimeout(() => addLog('julia', 'Connexion établie. Je t\'écoute.'), sequence.length * 350 + 300);
+}
+
+function addLog(who, text) {
+  const log = document.getElementById('log');
+  const row = document.createElement('div');
+  row.className = 'row ' + who;
+  const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  row.innerHTML = `<span class="tag">[${time}] ${who === 'me' ? 'TOI' : 'JULIA'}</span><span class="msg">${text}</span>`;
+  log.appendChild(row);
+  log.scrollTop = log.scrollHeight;
+}
+
+function setBusy(isBusy) {
+  document.getElementById('core').classList.toggle('busy', isBusy);
+  document.getElementById('waveform').classList.toggle('active', isBusy);
+  document.getElementById('hudStatus').textContent = isBusy ? 'TRAITEMENT EN COURS' : 'EN VEILLE';
+}
+
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
+async function toggleMic() {
+  if (isRecording) {
+    mediaRecorder.stop();
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      isRecording = false;
+      document.getElementById('micBtn').classList.remove('recording');
+      document.getElementById('hudStatus').textContent = 'TRANSCRIPTION...';
+
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      await transcrireEtEnvoyer(audioBlob);
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    document.getElementById('micBtn').classList.add('recording');
+    document.getElementById('hudStatus').textContent = "J'ÉCOUTE...";
+  } catch (err) {
+    addLog('julia', 'Impossible d\'accéder au micro : ' + err.message);
+  }
+}
+
+async function transcrireEtEnvoyer(audioBlob) {
+  const formData = new FormData();
+  formData.append('audio', audioBlob, 'enregistrement.webm');
+  formData.append('token', TOKEN);
+
+  try {
+    const res = await fetch('/listen', { method: 'POST', body: formData });
+    const data = await res.json();
+
+    if (data.error || !data.text) {
+      addLog('julia', 'Je n\'ai pas compris, réessaie.');
+      document.getElementById('hudStatus').textContent = 'EN VEILLE';
+      return;
+    }
+
+    document.getElementById('msgInput').value = data.text;
+    await sendMessage(); // envoie le texte transcrit comme un message normal
+  } catch (err) {
+    addLog('julia', 'Service de transcription indisponible.');
+    document.getElementById('hudStatus').textContent = 'EN VEILLE';
+  }
+}
+
+async function sendMessage() {
+  const input = document.getElementById('msgInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  addLog('me', text);
+  setBusy(true);
+
+  try {
+    const res = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: TOKEN, message: text })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      addLog('julia', 'Erreur : ' + data.error);
+    } else {
+      addLog('julia', data.reply);
+      playVoice(data.reply);
+    }
+  } catch (err) {
+    addLog('julia', 'Connexion au cerveau impossible.');
+  }
+
+  setBusy(false);
+}
+
+async function playVoice(text) {
+  try {
+    const res = await fetch('/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: TOKEN, text })
+    });
+    if (!res.ok) return; // service voix pas lancé, on ignore silencieusement
+    const audioBlob = await res.blob();
+    const audio = new Audio(URL.createObjectURL(audioBlob));
+    document.getElementById('waveform').classList.add('active');
+    audio.onended = () => document.getElementById('waveform').classList.remove('active');
+    audio.play();
+  } catch (err) {
+    // service voix indisponible — Julia reste utilisable en texte seul
+  }
+}
+</script>
+</body>
+</html>

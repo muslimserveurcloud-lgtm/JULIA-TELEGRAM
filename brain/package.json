@@ -1,0 +1,17 @@
+{
+  "name": "julia-brain",
+  "version": "1.0.0",
+  "description": "Cerveau IA de Julia (Mistral)",
+  "main": "julia_brain.js",
+  "scripts": {
+    "start": "node julia_brain.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "screenshot-desktop": "^1.15.0",
+    "multer": "^1.4.5-lts.1",
+    "form-data": "^4.0.0"
+  }
+}

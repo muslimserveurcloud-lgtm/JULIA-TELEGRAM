@@ -1,0 +1,58 @@
+name: Julia Telegram Bot
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+
+  julia:
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 350
+
+    steps:
+
+      - name: Checkout Julia
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Installer Telegram
+        working-directory: telegram
+        run: npm install
+
+      - name: Installer Julia Brain
+        if: hashFiles('brain/package.json') != ''
+        working-directory: brain
+        run: npm install
+
+      - name: Démarrer Julia Brain
+        if: hashFiles('brain/package.json') != ''
+        run: |
+          cd brain
+          npm start > ../brain.log 2>&1 &
+          sleep 10
+
+      - name: Démarrer Julia Telegram
+        env:
+
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+
+          TELEGRAM_OWNER_ID: ${{ secrets.TELEGRAM_OWNER_ID }}
+
+          JULIA_WEB_TOKEN: ${{ secrets.JULIA_WEB_TOKEN }}
+
+          BRAIN_URL: http://127.0.0.1:4001
+
+        run: |
+
+          cd telegram
+
+          npm start

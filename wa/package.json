@@ -1,0 +1,15 @@
+{
+  "name": "julia-wa-bridge",
+  "version": "1.0.0",
+  "description": "Bridge WhatsApp de Julia (Baileys)",
+  "main": "julia_wa.js",
+  "scripts": {
+    "start": "node julia_wa.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "6.7.23",
+    "express": "^4.19.2",
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5"
+  }
+}
